@@ -1,0 +1,1 @@
+{"name":"stockvalue","subdomain":"d-stockvalue","scripts":{"start":"node server.js"},"version":"0.0.0-2","engines":{"node":"0.8.x"},"bundledDependencies":["ejs","yql","express",".bin"],"env":{"npm_config_rebuild_bundle":false,"npm_config_production":true}}
