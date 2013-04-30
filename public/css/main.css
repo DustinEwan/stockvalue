@@ -1,0 +1,68 @@
+@font-face {
+    font-family: 'SlingBold';
+    src: url('/fonts/sling/SlingBold-webfont.eot');
+    src: url('/fonts/sling/SlingBold-webfont.eot?#iefix') format('embedded-opentype'),
+         url('/fonts/sling/SlingBold-webfont.woff') format('woff'),
+         url('/fonts/sling/SlingBold-webfont.ttf') format('truetype'),
+         url('/fonts/sling/SlingBold-webfont.svg#SlingBold') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+	padding: 0;
+	margin: 0;
+}
+
+div#container {
+	width: 1024px; 
+	padding-left: 128px;
+}
+
+div#header {
+	background-color:#002233;
+	color:#EEEEEE; 
+	height:150px; 
+	margin-bottom: 20px; 
+	padding: 20px;
+	position: relative;
+}
+
+div#header h1 {
+	font-family: SlingBold;
+
+}
+
+div#newrequest {
+	position: absolute;
+	right: 20px;
+	bottom: 0px;
+}
+
+div#content {
+	margin-top: 170px;
+	margin-right: 62px; 
+	margin-left: 62px;
+}
+
+div#chart-container {
+	margin-top: 3px;
+	margin-bottom: 3px;
+}
+
+div.novus-chart {
+	width:900px; 
+	height:250px; 
+	background: url('/images/stripes.png');
+	margin-right:10px; 
+	border-radius: 15px;
+}
+
+span.small-label {
+	float: right;
+	font-size: 11px;
+	font-weight: bold;
+	font-style: italic;
+	padding-right: 15px;
+	color: #222222;
+}

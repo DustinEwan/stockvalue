@@ -17,21 +17,36 @@ app.listen(port, function() {
 app.get('/', function(req, res) {
 
 	var symbol = req.param('symbol');
-	var wacc = toDec(req.param('wacc'));
+	var wacc = req.param('wacc');
+
+	if (!req.param('symbol') || !req.param('wacc')) {
+		res.render("incomplete.ejs", {symbol: symbol, wacc: wacc});
+		return;
+	}
+
+	wacc = toDec(wacc);
+
+	if (wacc > 1) wacc /= 100;
 
 	var url = 'url="www.google.com/finance?q=' + symbol + '&fstype=ii&ei=Q1t1UYC7FoielwPCcw"';
 	var options = '(css="#incannualdiv table" or css="#balannualdiv table" or css="#casannualdiv table")'; // The three annual tables for income, balance, and cash
 	var query = 'select * from data.html.cssselect where ' + url + ' and ' + options;
 
 	new YQL.exec(query, function(data) {
-		// Clean up this data
-		var results = data.query.results.results;
-
-		if (results == null)
+		if (!data || !data.query || !data.query.results || !data.query.results.results) {
 			res.redirect('/?symbol=' + symbol + "&wacc=" + wacc);
+			return;
+		}
+
+		var results = data.query.results.results;
 
 		var output = [];
 		for (var i in results) {
+			if (!results[i]) {
+				res.redirect('/?symbol=' + symbol + "&wacc=" + wacc);
+				return
+			}
+
 			var curr = {};
 			// This is the actual data, each td is formatted such that:
 			// 0 => Label
@@ -40,6 +55,9 @@ app.get('/', function(req, res) {
 			// 3 => Current Year - 2
 			// 4 => Current Year - 3
 			var tdata = results[i].table.tbody.tr;
+			if (!tdata)
+				continue;
+
 			for (var j in tdata) {
 				var td = tdata[j].td;
 				var temp = [];
@@ -64,13 +82,20 @@ app.get('/', function(req, res) {
 			output.push(curr);
 		}
 
+
+
 		var income = output[0];
 		var balances = output[1]; 
 		var cashflow = output[2]; 
 
-		var cash_operating = output[2]["Cash from Operating Activities"];
-		var capital_exenditures = output[2]["Capital Expenditures"];
-		var dividends_paid = output[2]["Total Cash Dividends Paid"];
+		if (!income || !balances || !cashflow) {
+			res.redirect('/?symbol=' + symbol + "&wacc=" + wacc);
+			return
+		}
+
+		var cash_operating = cashflow["Cash from Operating Activities"];
+		var capital_exenditures = cashflow["Capital Expenditures"];
+		var dividends_paid = cashflow["Total Cash Dividends Paid"];
 
 		var equity = toDec(balances["Total Equity"][0]);
 		var profit_margin = toDec(income["Income After Tax"][0])/toDec(income["Total Revenue"][0]);
@@ -86,6 +111,11 @@ app.get('/', function(req, res) {
 		var yahoo_url = 'http://finance.yahoo.com/d/quotes.csv?s=' + symbol + '&f=abl1ghjkj1y';
 
 		request(yahoo_url, function(error, response, body) {
+
+			if (error) {
+				res.redirect('/?symbol=' + symbol + "&wacc=" + wacc);
+				return;
+			}
 
 			//ask, bid, price, low, high, 52w low, 52w high, market cap, dividend yield
 			var y = body.split(',');
@@ -119,11 +149,11 @@ app.get('/', function(req, res) {
 			prices['Equity'] = toDec((equity / shares_outstanding).toFixed(2));
 
 			colors['Ask'] = '#fa002e'; // red
-			colors['Bid'] = '#00fa4f'; // green
+			colors['Bid'] = '#00C73F'; // green
 			colors['Price'] = '#15a3bc'; // blue
-			colors['Day Low'] = '#7e116a'; // violet / fuscia
+			colors['Day Low'] = '#94147D'; // violet / fuscia
 			colors['Day High'] = '#8215bc'; // fuscia / violet
-			colors['Year Low'] = '#490a3d'; // violet
+			colors['Year Low'] = '#751062'; // violet
 			colors['Year High'] = '#bd1550'; //fuscia
 			colors['1:1 Value'] = '#eaf202'; // yellow
 			colors['2:1 Value'] = '#99E000';
@@ -132,38 +162,6 @@ app.get('/', function(req, res) {
 			colors['1:3 Value'] = '#fd9b2b';
 			colors['Intrinsic'] = '#8a9b0f'; //green
 			colors['Equity'] = '#e97f02'; //orange
-
-			//insert sort the keys/values
-			// var keys = []
-			// var values = []
-
-			// for (var k in prices) {
-			// 	if (values.length == 0) {
-			// 		keys[0] = k;
-			// 		values[0] = prices[k];
-			// 		continue;
-			// 	}
-
-			// 	var added = false;
-			// 	for (var i = 0; i < values.length; i++) {
-			// 		if (prices[k] < values[i]) {
-			// 			for (var j = values.length; j > i; j--) {
-			// 				values[j] = values[j - 1];
-			// 				keys[j] = keys[j - 1];
-			// 			}
-
-			// 			values[i] = prices[k];
-			// 			keys[i] = k;
-			// 			added = true;
-			// 			break;
-			// 		}
-			// 	}
-
-			// 	if (!added) {
-			// 		values.push(prices[k]);
-			// 		keys.push(k);
-			// 	}
-			// }
 
 			//sort the prices.
 			var graphdata = [];
@@ -191,37 +189,48 @@ app.get('/', function(req, res) {
 			}
 
 			// res.send(JSON.stringify(graphdata) + '<br /><br />' + JSON.stringify(prices));
-
-			res.render('index.ejs', {
-				income: income,
-				balances: balances, 
-				cashflow: cashflow, 
-				FCF: FCF, 
-				PV: getPV(wacc, FCF).toMoney(),
-				HV: getHV(wacc, FCF).toMoney(), 
-				IV: getIV(wacc, FCF).toMoney(), 
-				profit_margin: profit_margin,
-				equity: equity.toMoney(),
-				iv_equity: (getIV(wacc, FCF) + equity).toMoney(),
-				wacc: wacc,
-				ask: ask,
-				bid: bid,
-				price: price,
-				low: low,
-				high: high,
-				year_low: year_low,
-				year_high: year_high,
-				market_cap: market_cap,
-				dividend_yield: dividend_yield,
-				shares_outstanding: shares_outstanding,
-				one_to_one_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding),
-				two_to_one_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 2, 1),
-				three_to_one_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 3, 1),
-				one_to_two_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 1, 2),
-				one_to_three_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 1, 3),
-				prices: graphdata
+			request('http://thatswacc.com/alltickers.php?term='+symbol, function(name_err, name_res, name) {
+				res.render('index.ejs', {
+					income: income,
+					balances: balances, 
+					cashflow: cashflow, 
+					FCF: FCF, 
+					PV: getPV(wacc, FCF).toMoney(),
+					HV: getHV(wacc, FCF).toMoney(), 
+					IV: getIV(wacc, FCF).toMoney(), 
+					profit_margin: profit_margin,
+					equity: equity.toMoney(),
+					iv_equity: (getIV(wacc, FCF) + equity).toMoney(),
+					symbol: symbol,
+					name: JSON.parse(name)[0] ? JSON.parse(name)[0].label : symbol,
+					wacc: wacc,
+					ask: ask,
+					bid: bid,
+					price: price,
+					low: low,
+					high: high,
+					year_low: year_low,
+					year_high: year_high,
+					market_cap: market_cap,
+					dividend_yield: dividend_yield,
+					shares_outstanding: shares_outstanding,
+					one_to_one_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding),
+					two_to_one_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 2, 1),
+					three_to_one_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 3, 1),
+					one_to_two_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 1, 2),
+					one_to_three_value: getCurrentValue(getIV(wacc, FCF), equity, shares_outstanding, 1, 3),
+					prices: graphdata
+				});
 			});
 		});
+	});
+});
+
+app.get('/wacc', function(req, res) {
+	var uri = 'http://thatswacc.com/php/curl7.php?ticker=' + req.param('ticker');
+
+	request(uri, function(error, response, body) {
+		res.send(body);
 	});
 });
 
@@ -237,7 +246,11 @@ function getPV(wacc, FCF) {
 }
 
 function getHV(wacc, FCF) {
-	return FCF[0] * (1.03) / (wacc - 0.03);
+	var g = 0.03;
+	if (wacc <= g)
+		g = wacc * 0.1;
+
+	return FCF[0] * (1 + g) / (wacc - g);
 }
 
 function getIV(wacc, FCF) {

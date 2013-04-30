@@ -1,0 +1,42 @@
+<html>
+	<head>
+		<title>Incomplete Submission.</title>
+		<script src="//thatswacc.com/js/mitch_js_lib.js"></script>
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+		<script>
+			var thousand =1000;			//One THOUSAND
+			var million = 1000000;		//One MILLION
+			var billion = 1000000000;	//One BILLION
+
+
+			function go() {
+				$(function() {
+					var wacc = 0;
+					if ($('#symbol').val() && !$('#wacc').val()) {
+						fn_AjaxTicker("/wacc","ticker="+ $('#symbol').val());
+						intervalid = setInterval(function() {
+							var waccDiv = $("#Usr_WACC");
+							if (waccDiv) {
+								var wacc = waccDiv.html().slice(0, -1);
+								window.location.href = '/?symbol=' + $('#symbol').val() + '&wacc=' + wacc;
+								clearInterval(intervalid);
+							}
+						}, 50);
+					} else if($('#symbol').val()) {
+						wacc = $('#wacc').val();
+						window.location.href = '/?symbol=' + $('#symbol').val() + '&wacc=' + $('#wacc').val();
+					}
+				});
+			}
+		</script>
+	</head>
+	<body onLoad="go()">
+		<form>
+			<label for="symbol">Symbol</label><input id="symbol" name="symbol" type="text" value="<%= symbol || '' %>" /><br />
+			<label for="wacc">wacc</label><input id="wacc" name="wacc" type="text" value="<%= wacc || '' %>" /><br />
+			<INPUT TYPE="button" NAME="button" Value="Go" onClick="go()">
+		</form>
+		<div id="tw_wacc_results_div" style="display:none;"></div>
+		<div id="go_here" style="display:none;"></div>
+	</body>
+</html>
